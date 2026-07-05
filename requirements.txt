@@ -1,0 +1,16 @@
+fastapi
+uvicorn[standard]
+langchain
+langchain-community
+langchain-ibm
+ibm-watsonx-ai
+chromadb
+sentence-transformers
+requests
+beautifulsoup4
+httpx
+pymupdf
+google-search-results
+python-dotenv
+pydantic
+aiohttp

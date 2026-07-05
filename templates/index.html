@@ -1,0 +1,1484 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>GrantMind — AI Funding Intelligence</title>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Inter:wght@300;400;500&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --void:     #050814;
+      --navy:     #0A0F2C;
+      --navy2:    #0F1535;
+      --indigo:   #6366F1;
+      --indigo2:  #818CF8;
+      --gold:     #F59E0B;
+      --gold2:    #FCD34D;
+      --emerald:  #10B981;
+      --rose:     #F43F5E;
+      --white:    #F8FAFC;
+      --muted:    #64748B;
+      --border:   rgba(99,102,241,0.15);
+      --glow:     rgba(99,102,241,0.25);
+      --font-display: 'Space Grotesk', sans-serif;
+      --font-body:    'Inter', sans-serif;
+      --font-mono:    'JetBrains Mono', monospace;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--void);
+      color: var(--white);
+      font-family: var(--font-body);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* ── Neural Canvas ─────────────────────────────────────────────── */
+    #neural-canvas {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      opacity: 0.35;
+      pointer-events: none;
+    }
+
+    /* ── Layout ────────────────────────────────────────────────────── */
+    .app {
+      position: relative;
+      z-index: 1;
+      display: grid;
+      grid-template-rows: auto 1fr;
+      min-height: 100vh;
+    }
+
+    /* ── Header ────────────────────────────────────────────────────── */
+    header {
+      padding: 20px 40px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--border);
+      background: rgba(5,8,20,0.8);
+      backdrop-filter: blur(20px);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .logo-icon {
+      width: 38px; height: 38px;
+      background: linear-gradient(135deg, var(--indigo), var(--gold));
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px;
+      box-shadow: 0 0 20px var(--glow);
+      animation: pulse-logo 3s ease-in-out infinite;
+    }
+
+    @keyframes pulse-logo {
+      0%, 100% { box-shadow: 0 0 20px var(--glow); }
+      50% { box-shadow: 0 0 40px rgba(99,102,241,0.5), 0 0 80px rgba(99,102,241,0.2); }
+    }
+
+    .logo-text {
+      font-family: var(--font-display);
+      font-size: 20px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+    }
+
+    .logo-text span { color: var(--indigo2); }
+
+    .header-badges {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .badge {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      padding: 4px 12px;
+      border-radius: 20px;
+      border: 1px solid var(--border);
+      color: var(--muted);
+    }
+
+    .badge.live {
+      border-color: rgba(16,185,129,0.4);
+      color: var(--emerald);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .live-dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: var(--emerald);
+      animation: blink 1.5s ease-in-out infinite;
+    }
+
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.3; }
+    }
+
+    /* ── Main Grid ─────────────────────────────────────────────────── */
+    .main {
+      display: grid;
+      grid-template-columns: 420px 1fr;
+      gap: 0;
+      height: calc(100vh - 73px);
+    }
+
+    /* ── Left Panel ────────────────────────────────────────────────── */
+    .panel-left {
+      border-right: 1px solid var(--border);
+      background: rgba(10,15,44,0.6);
+      backdrop-filter: blur(20px);
+      overflow-y: auto;
+      padding: 32px;
+      display: flex;
+      flex-direction: column;
+      gap: 28px;
+    }
+
+    .panel-left::-webkit-scrollbar { width: 4px; }
+    .panel-left::-webkit-scrollbar-track { background: transparent; }
+    .panel-left::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+    .section-label {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      letter-spacing: 2px;
+      color: var(--indigo2);
+      text-transform: uppercase;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .section-label::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--border);
+    }
+
+    /* Hero text */
+    .hero-text h1 {
+      font-family: var(--font-display);
+      font-size: 28px;
+      font-weight: 700;
+      line-height: 1.2;
+      letter-spacing: -1px;
+      margin-bottom: 10px;
+    }
+
+    .hero-text h1 .highlight {
+      background: linear-gradient(135deg, var(--indigo2), var(--gold));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .hero-text p {
+      font-size: 13px;
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    /* Agent Pipeline Visual */
+    .pipeline {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .pipeline-step {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 14px;
+      border-radius: 8px;
+      border: 1px solid transparent;
+      transition: all 0.3s ease;
+      background: rgba(255,255,255,0.02);
+    }
+
+    .pipeline-step.active {
+      border-color: rgba(99,102,241,0.4);
+      background: rgba(99,102,241,0.08);
+    }
+
+    .pipeline-step.done {
+      border-color: rgba(16,185,129,0.3);
+      background: rgba(16,185,129,0.05);
+    }
+
+    .pipeline-step.error {
+      border-color: rgba(244,63,94,0.3);
+      background: rgba(244,63,94,0.05);
+    }
+
+    .step-icon {
+      width: 32px; height: 32px;
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 14px;
+      background: rgba(255,255,255,0.05);
+      flex-shrink: 0;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .pipeline-step.active .step-icon::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg, var(--indigo), transparent);
+      animation: shimmer 1.5s ease-in-out infinite;
+    }
+
+    @keyframes shimmer {
+      0% { opacity: 0; transform: translateX(-100%); }
+      50% { opacity: 1; }
+      100% { opacity: 0; transform: translateX(100%); }
+    }
+
+    .step-info { flex: 1; }
+    .step-name {
+      font-size: 12px;
+      font-weight: 600;
+      font-family: var(--font-display);
+    }
+    .step-desc {
+      font-size: 11px;
+      color: var(--muted);
+      margin-top: 2px;
+    }
+
+    .step-status {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      padding: 2px 8px;
+      border-radius: 10px;
+      background: rgba(255,255,255,0.05);
+      color: var(--muted);
+    }
+
+    .pipeline-step.active .step-status {
+      background: rgba(99,102,241,0.2);
+      color: var(--indigo2);
+    }
+
+    .pipeline-step.done .step-status {
+      background: rgba(16,185,129,0.2);
+      color: var(--emerald);
+    }
+
+    /* Form */
+    .form { display: flex; flex-direction: column; gap: 16px; }
+
+    .field { display: flex; flex-direction: column; gap: 6px; }
+
+    .field label {
+      font-size: 11px;
+      font-weight: 500;
+      color: var(--muted);
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+    }
+
+    .field input,
+    .field select,
+    .field textarea {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      color: var(--white);
+      font-family: var(--font-body);
+      font-size: 13px;
+      padding: 10px 14px;
+      outline: none;
+      transition: all 0.2s;
+      width: 100%;
+    }
+
+    .field input:focus,
+    .field select:focus,
+    .field textarea:focus {
+      border-color: var(--indigo);
+      background: rgba(99,102,241,0.08);
+      box-shadow: 0 0 0 3px rgba(99,102,241,0.15);
+    }
+
+    .field select option { background: var(--navy2); }
+    .field textarea { resize: none; height: 80px; line-height: 1.6; }
+
+    .field-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    /* Launch Button */
+    .btn-launch {
+      width: 100%;
+      padding: 14px;
+      background: linear-gradient(135deg, var(--indigo), #4F46E5);
+      border: none;
+      border-radius: 12px;
+      color: white;
+      font-family: var(--font-display);
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      position: relative;
+      overflow: hidden;
+      transition: all 0.3s;
+      letter-spacing: -0.3px;
+    }
+
+    .btn-launch::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg, transparent, rgba(255,255,255,0.1), transparent);
+      transform: translateX(-100%);
+      transition: transform 0.6s;
+    }
+
+    .btn-launch:hover::before { transform: translateX(100%); }
+    .btn-launch:hover { transform: translateY(-1px); box-shadow: 0 8px 30px rgba(99,102,241,0.4); }
+    .btn-launch:active { transform: translateY(0); }
+    .btn-launch:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .btn-launch .btn-inner {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    /* ── Right Panel ───────────────────────────────────────────────── */
+    .panel-right {
+      overflow-y: auto;
+      padding: 32px;
+      display: flex;
+      flex-direction: column;
+      gap: 32px;
+    }
+
+    .panel-right::-webkit-scrollbar { width: 4px; }
+    .panel-right::-webkit-scrollbar-track { background: transparent; }
+    .panel-right::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+    /* Empty State */
+    .empty-state {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      min-height: 400px;
+    }
+
+    .empty-orb {
+      width: 120px; height: 120px;
+      border-radius: 50%;
+      background: radial-gradient(circle at 40% 40%, rgba(99,102,241,0.3), rgba(5,8,20,0.8));
+      border: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 48px;
+      animation: float 4s ease-in-out infinite;
+      box-shadow: 0 0 60px rgba(99,102,241,0.15);
+    }
+
+    @keyframes float {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-12px); }
+    }
+
+    .empty-state h3 {
+      font-family: var(--font-display);
+      font-size: 20px;
+      font-weight: 600;
+    }
+
+    .empty-state p {
+      font-size: 13px;
+      color: var(--muted);
+      text-align: center;
+      max-width: 300px;
+      line-height: 1.7;
+    }
+
+    /* Agent Log */
+    .log-container {
+      background: rgba(10,15,44,0.6);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      overflow: hidden;
+    }
+
+    .log-header {
+      padding: 14px 20px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: rgba(255,255,255,0.02);
+    }
+
+    .log-header span {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: var(--indigo2);
+    }
+
+    .log-body {
+      padding: 16px 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      max-height: 200px;
+      overflow-y: auto;
+    }
+
+    .log-body::-webkit-scrollbar { width: 3px; }
+    .log-body::-webkit-scrollbar-thumb { background: var(--border); }
+
+    .log-entry {
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      line-height: 1.6;
+      animation: fadeInUp 0.3s ease;
+    }
+
+    @keyframes fadeInUp {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .log-tag {
+      padding: 1px 8px;
+      border-radius: 4px;
+      font-size: 9px;
+      font-weight: 600;
+      letter-spacing: 1px;
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+
+    .log-tag.orchestrator { background: rgba(99,102,241,0.2); color: var(--indigo2); }
+    .log-tag.scout { background: rgba(245,158,11,0.2); color: var(--gold); }
+    .log-tag.extractor { background: rgba(16,185,129,0.2); color: var(--emerald); }
+    .log-tag.matcher { background: rgba(244,63,94,0.2); color: var(--rose); }
+    .log-tag.drafter { background: rgba(129,140,248,0.2); color: var(--indigo2); }
+
+    .log-msg { color: #94A3B8; }
+
+    /* Grants Grid */
+    .grants-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      gap: 16px;
+    }
+
+    .grant-card {
+      background: rgba(10,15,44,0.7);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 20px;
+      position: relative;
+      overflow: hidden;
+      transition: all 0.3s ease;
+      animation: cardIn 0.5s ease backwards;
+      cursor: pointer;
+    }
+
+    .grant-card:hover {
+      border-color: rgba(99,102,241,0.4);
+      transform: translateY(-4px);
+      box-shadow: 0 20px 60px rgba(0,0,0,0.4), 0 0 40px rgba(99,102,241,0.1);
+    }
+
+    @keyframes cardIn {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .grant-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 3px;
+      background: linear-gradient(90deg, var(--indigo), var(--gold));
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+
+    .grant-card:hover::before { opacity: 1; }
+
+    .card-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 14px;
+      gap: 12px;
+    }
+
+    .grant-name {
+      font-family: var(--font-display);
+      font-size: 14px;
+      font-weight: 600;
+      line-height: 1.4;
+      flex: 1;
+    }
+
+    .score-ring {
+      flex-shrink: 0;
+      width: 52px; height: 52px;
+      position: relative;
+    }
+
+    .score-ring svg {
+      transform: rotate(-90deg);
+    }
+
+    .score-ring .track {
+      fill: none;
+      stroke: rgba(255,255,255,0.05);
+      stroke-width: 4;
+    }
+
+    .score-ring .fill {
+      fill: none;
+      stroke-width: 4;
+      stroke-linecap: round;
+      transition: stroke-dashoffset 1s ease;
+    }
+
+    .score-text {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .score-num {
+      font-family: var(--font-display);
+      font-size: 13px;
+      font-weight: 700;
+      line-height: 1;
+    }
+
+    .score-label {
+      font-size: 7px;
+      color: var(--muted);
+      letter-spacing: 0.5px;
+    }
+
+    .match-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 10px;
+      font-weight: 600;
+      padding: 3px 10px;
+      border-radius: 20px;
+      margin-bottom: 10px;
+    }
+
+    .match-badge.excellent {
+      background: rgba(16,185,129,0.15);
+      color: var(--emerald);
+      border: 1px solid rgba(16,185,129,0.3);
+    }
+
+    .match-badge.good {
+      background: rgba(99,102,241,0.15);
+      color: var(--indigo2);
+      border: 1px solid rgba(99,102,241,0.3);
+    }
+
+    .match-badge.partial {
+      background: rgba(245,158,11,0.15);
+      color: var(--gold);
+      border: 1px solid rgba(245,158,11,0.3);
+    }
+
+    .match-badge.low {
+      background: rgba(244,63,94,0.15);
+      color: var(--rose);
+      border: 1px solid rgba(244,63,94,0.3);
+    }
+
+    .grant-desc {
+      font-size: 12px;
+      color: var(--muted);
+      line-height: 1.7;
+      margin-bottom: 14px;
+    }
+
+    .grant-meta {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      margin-bottom: 14px;
+    }
+
+    .meta-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 11px;
+    }
+
+    .meta-row .meta-icon { font-size: 12px; width: 16px; }
+    .meta-row .meta-key { color: var(--muted); width: 60px; flex-shrink: 0; }
+    .meta-row .meta-val { color: var(--white); font-weight: 500; }
+
+    .grant-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-bottom: 14px;
+    }
+
+    .tag {
+      font-size: 10px;
+      padding: 2px 8px;
+      border-radius: 6px;
+      background: rgba(99,102,241,0.1);
+      color: var(--indigo2);
+      border: 1px solid rgba(99,102,241,0.2);
+    }
+
+    .card-actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    .btn-sm {
+      flex: 1;
+      padding: 8px;
+      border-radius: 8px;
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      transition: all 0.2s;
+      font-family: var(--font-body);
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--indigo), #4F46E5);
+      color: white;
+    }
+
+    .btn-primary:hover { opacity: 0.9; transform: translateY(-1px); }
+
+    .btn-ghost {
+      background: rgba(255,255,255,0.05);
+      color: var(--muted);
+      border: 1px solid var(--border);
+    }
+
+    .btn-ghost:hover {
+      background: rgba(255,255,255,0.08);
+      color: var(--white);
+    }
+
+    /* Proposals */
+    .proposal-card {
+      background: rgba(10,15,44,0.7);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      overflow: hidden;
+      animation: cardIn 0.5s ease backwards;
+    }
+
+    .proposal-header {
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: rgba(99,102,241,0.05);
+    }
+
+    .proposal-header-left { display: flex; flex-direction: column; gap: 4px; }
+
+    .proposal-title {
+      font-family: var(--font-display);
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    .proposal-subtitle {
+      font-size: 11px;
+      color: var(--muted);
+    }
+
+    .proposal-body {
+      padding: 20px;
+      font-size: 12px;
+      line-height: 1.9;
+      color: #94A3B8;
+      white-space: pre-wrap;
+      max-height: 300px;
+      overflow-y: auto;
+    }
+
+    .proposal-body::-webkit-scrollbar { width: 3px; }
+    .proposal-body::-webkit-scrollbar-thumb { background: var(--border); }
+
+    .proposal-footer {
+      padding: 12px 20px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      justify-content: flex-end;
+    }
+
+    /* Stats Bar */
+    .stats-bar {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+    }
+
+    .stat-card {
+      background: rgba(10,15,44,0.6);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px;
+      text-align: center;
+      animation: cardIn 0.4s ease backwards;
+    }
+
+    .stat-num {
+      font-family: var(--font-display);
+      font-size: 28px;
+      font-weight: 700;
+      background: linear-gradient(135deg, var(--indigo2), var(--gold));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      line-height: 1;
+      margin-bottom: 4px;
+    }
+
+    .stat-label {
+      font-size: 11px;
+      color: var(--muted);
+    }
+
+    /* Loading Spinner */
+    .spinner {
+      width: 20px; height: 20px;
+      border: 2px solid rgba(255,255,255,0.2);
+      border-top-color: white;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      display: none;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Modal */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(5,8,20,0.85);
+      backdrop-filter: blur(8px);
+      z-index: 200;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .modal-overlay.open { display: flex; }
+
+    .modal {
+      background: var(--navy2);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      width: 100%;
+      max-width: 700px;
+      max-height: 80vh;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      animation: modalIn 0.3s ease;
+    }
+
+    @keyframes modalIn {
+      from { opacity: 0; transform: scale(0.95) translateY(20px); }
+      to { opacity: 1; transform: scale(1) translateY(0); }
+    }
+
+    .modal-head {
+      padding: 20px 24px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .modal-head h3 {
+      font-family: var(--font-display);
+      font-size: 18px;
+      font-weight: 700;
+    }
+
+    .modal-close {
+      width: 32px; height: 32px;
+      border-radius: 8px;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid var(--border);
+      color: var(--muted);
+      cursor: pointer;
+      font-size: 18px;
+      display: flex; align-items: center; justify-content: center;
+      transition: all 0.2s;
+    }
+
+    .modal-close:hover { background: rgba(244,63,94,0.1); color: var(--rose); border-color: rgba(244,63,94,0.3); }
+
+    .modal-body {
+      padding: 24px;
+      overflow-y: auto;
+      flex: 1;
+      font-size: 13px;
+      line-height: 1.9;
+      color: #94A3B8;
+      white-space: pre-wrap;
+    }
+
+    .modal-body::-webkit-scrollbar { width: 4px; }
+    .modal-body::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+    .modal-foot {
+      padding: 16px 24px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      gap: 10px;
+      justify-content: flex-end;
+    }
+
+    /* Toast */
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      background: var(--navy2);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 12px 20px;
+      font-size: 13px;
+      z-index: 300;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      transform: translateY(100px);
+      opacity: 0;
+      transition: all 0.3s ease;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+    }
+
+    .toast.show {
+      transform: translateY(0);
+      opacity: 1;
+    }
+
+    .toast.success { border-color: rgba(16,185,129,0.4); }
+    .toast.error { border-color: rgba(244,63,94,0.4); }
+
+    /* Responsive */
+    @media (max-width: 900px) {
+      .main { grid-template-columns: 1fr; grid-template-rows: auto 1fr; height: auto; }
+      .panel-left { height: auto; }
+      .stats-bar { grid-template-columns: repeat(2,1fr); }
+      .grants-grid { grid-template-columns: 1fr; }
+    }
+
+    /* Reduced motion */
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Neural Network Canvas -->
+<canvas id="neural-canvas"></canvas>
+
+<!-- Modal -->
+<div class="modal-overlay" id="modal">
+  <div class="modal">
+    <div class="modal-head">
+      <h3 id="modal-title">Proposal</h3>
+      <button class="modal-close" onclick="closeModal()">×</button>
+    </div>
+    <div class="modal-body" id="modal-body"></div>
+    <div class="modal-foot">
+      <button class="btn-sm btn-ghost" onclick="copyProposal()">Copy text</button>
+      <button class="btn-sm btn-primary" onclick="closeModal()">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast">
+  <span id="toast-icon">✓</span>
+  <span id="toast-msg">Copied!</span>
+</div>
+
+<div class="app">
+  <!-- Header -->
+  <header>
+    <div class="logo">
+      <div class="logo-icon">⚡</div>
+      <div class="logo-text">Grant<span>Mind</span></div>
+    </div>
+    <div class="header-badges">
+      <div class="badge">IBM Granite</div>
+      <div class="badge">4 Agents</div>
+      <div class="badge live"><div class="live-dot"></div>System Online</div>
+    </div>
+  </header>
+
+  <div class="main">
+    <!-- Left Panel -->
+    <div class="panel-left">
+
+      <div class="hero-text">
+        <h1>Find the <span class="highlight">perfect grant</span> for your startup</h1>
+        <p>4 specialized AI agents autonomously search, extract, score, and draft funding proposals — powered by IBM Granite.</p>
+      </div>
+
+      <!-- Agent Pipeline -->
+      <div>
+        <div class="section-label">Agent Pipeline</div>
+        <div class="pipeline">
+          <div class="pipeline-step" id="step-scout">
+            <div class="step-icon">🔍</div>
+            <div class="step-info">
+              <div class="step-name">Scout Agent</div>
+              <div class="step-desc">Searches grant databases & gov portals</div>
+            </div>
+            <div class="step-status" id="status-scout">idle</div>
+          </div>
+          <div class="pipeline-step" id="step-extractor">
+            <div class="step-icon">⚙️</div>
+            <div class="step-info">
+              <div class="step-name">Extractor Agent</div>
+              <div class="step-desc">RAG pipeline — parses & structures data</div>
+            </div>
+            <div class="step-status" id="status-extractor">idle</div>
+          </div>
+          <div class="pipeline-step" id="step-matcher">
+            <div class="step-icon">🎯</div>
+            <div class="step-info">
+              <div class="step-name">Matcher Agent</div>
+              <div class="step-desc">ReAct reasoning — scores eligibility</div>
+            </div>
+            <div class="step-status" id="status-matcher">idle</div>
+          </div>
+          <div class="pipeline-step" id="step-drafter">
+            <div class="step-icon">✍️</div>
+            <div class="step-info">
+              <div class="step-name">Drafter Agent</div>
+              <div class="step-desc">Generates custom proposals</div>
+            </div>
+            <div class="step-status" id="status-drafter">idle</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Form -->
+      <div>
+        <div class="section-label">Startup Profile</div>
+        <div class="form">
+          <div class="field">
+            <label>Startup Name</label>
+            <input type="text" id="name" placeholder="e.g. AgroSense" value="AgroSense"/>
+          </div>
+
+          <div class="field-row">
+            <div class="field">
+              <label>Domain</label>
+              <select id="domain">
+                <option value="AgriTech">AgriTech</option>
+                <option value="HealthTech">HealthTech</option>
+                <option value="EdTech">EdTech</option>
+                <option value="FinTech">FinTech</option>
+                <option value="CleanTech">CleanTech</option>
+                <option value="AI/ML">AI/ML</option>
+                <option value="IoT">IoT</option>
+                <option value="Cybersecurity">Cybersecurity</option>
+                <option value="Logistics">Logistics</option>
+                <option value="E-commerce">E-commerce</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>Stage</label>
+              <select id="stage">
+                <option value="Idea">Idea</option>
+                <option value="MVP" selected>MVP</option>
+                <option value="Early Revenue">Early Revenue</option>
+                <option value="Growth">Growth</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="field-row">
+            <div class="field">
+              <label>Location</label>
+              <input type="text" id="location" placeholder="Pune, Maharashtra" value="Pune, Maharashtra"/>
+            </div>
+            <div class="field">
+              <label>Team Size</label>
+              <input type="number" id="team_size" placeholder="4" value="4" min="1"/>
+            </div>
+          </div>
+
+          <div class="field">
+            <label>What does your startup do?</label>
+            <textarea id="description" placeholder="Describe your startup in 1-2 sentences...">AI-powered soil health monitoring for small farmers using IoT sensors</textarea>
+          </div>
+
+          <button class="btn-launch" id="launch-btn" onclick="findGrants()">
+            <div class="btn-inner">
+              <div class="spinner" id="spinner"></div>
+              <span id="btn-text">🚀 Launch Intelligence Search</span>
+            </div>
+          </button>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Right Panel -->
+    <div class="panel-right" id="right-panel">
+
+      <!-- Empty State -->
+      <div class="empty-state" id="empty-state">
+        <div class="empty-orb">🛰️</div>
+        <h3>Mission Control Ready</h3>
+        <p>Fill in your startup profile and launch the AI agents to discover relevant grants and generate proposals.</p>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+// ── Neural Network Canvas ──────────────────────────────────────────────────
+const canvas = document.getElementById('neural-canvas');
+const ctx = canvas.getContext('2d');
+let nodes = [], animFrame, isActive = false;
+
+function resizeCanvas() {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+}
+
+function initNodes() {
+  nodes = [];
+  const count = Math.floor((canvas.width * canvas.height) / 18000);
+  for (let i = 0; i < count; i++) {
+    nodes.push({
+      x: Math.random() * canvas.width,
+      y: Math.random() * canvas.height,
+      vx: (Math.random() - 0.5) * 0.4,
+      vy: (Math.random() - 0.5) * 0.4,
+      r: Math.random() * 2 + 1,
+      pulse: Math.random() * Math.PI * 2
+    });
+  }
+}
+
+function drawNeural() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  const speed = isActive ? 2.5 : 1;
+
+  nodes.forEach(n => {
+    n.x += n.vx * speed;
+    n.y += n.vy * speed;
+    n.pulse += 0.02 * speed;
+    if (n.x < 0 || n.x > canvas.width) n.vx *= -1;
+    if (n.y < 0 || n.y > canvas.height) n.vy *= -1;
+  });
+
+  // Draw connections
+  for (let i = 0; i < nodes.length; i++) {
+    for (let j = i + 1; j < nodes.length; j++) {
+      const dx = nodes[i].x - nodes[j].x;
+      const dy = nodes[i].y - nodes[j].y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      const maxDist = isActive ? 160 : 120;
+
+      if (dist < maxDist) {
+        const alpha = (1 - dist / maxDist) * (isActive ? 0.5 : 0.2);
+        ctx.beginPath();
+        ctx.moveTo(nodes[i].x, nodes[i].y);
+        ctx.lineTo(nodes[j].x, nodes[j].y);
+        ctx.strokeStyle = isActive
+          ? `rgba(99,102,241,${alpha})`
+          : `rgba(99,102,241,${alpha})`;
+        ctx.lineWidth = isActive ? 0.8 : 0.4;
+        ctx.stroke();
+      }
+    }
+  }
+
+  // Draw nodes
+  nodes.forEach(n => {
+    const pulse = Math.sin(n.pulse) * 0.5 + 0.5;
+    const r = n.r + (isActive ? pulse * 2 : 0);
+    ctx.beginPath();
+    ctx.arc(n.x, n.y, r, 0, Math.PI * 2);
+    ctx.fillStyle = isActive
+      ? `rgba(99,102,241,${0.4 + pulse * 0.6})`
+      : `rgba(99,102,241,0.4)`;
+    ctx.fill();
+  });
+
+  animFrame = requestAnimationFrame(drawNeural);
+}
+
+window.addEventListener('resize', () => { resizeCanvas(); initNodes(); });
+resizeCanvas();
+initNodes();
+drawNeural();
+
+// ── Agent Pipeline UI ──────────────────────────────────────────────────────
+const steps = ['scout', 'extractor', 'matcher', 'drafter'];
+
+function setStep(name, state) {
+  const el = document.getElementById(`step-${name}`);
+  const st = document.getElementById(`status-${name}`);
+  el.className = `pipeline-step ${state}`;
+
+  const labels = { idle: 'idle', active: 'running...', done: 'done ✓', error: 'error' };
+  st.textContent = labels[state] || state;
+}
+
+function resetPipeline() {
+  steps.forEach(s => setStep(s, ''));
+}
+
+// ── Log Parser ─────────────────────────────────────────────────────────────
+function getTagFromLog(msg) {
+  const m = msg.match(/\[(\w+)\]/);
+  return m ? m[1].toLowerCase() : 'orchestrator';
+}
+
+function addLog(msg) {
+  const body = document.getElementById('log-body');
+  if (!body) return;
+  const tag = getTagFromLog(msg);
+  const text = msg.replace(/\[\w+\]\s*/, '');
+  const entry = document.createElement('div');
+  entry.className = 'log-entry';
+  entry.innerHTML = `<span class="log-tag ${tag}">${tag.toUpperCase()}</span><span class="log-msg">${text}</span>`;
+  body.appendChild(entry);
+  body.scrollTop = body.scrollHeight;
+
+  // Update pipeline steps based on log
+  if (msg.includes('grant search')) setStep('scout', 'active');
+  if (msg.includes('Found') && msg.includes('raw')) { setStep('scout', 'done'); setStep('extractor', 'active'); }
+  if (msg.includes('Extracted') && msg.includes('structured')) { setStep('extractor', 'done'); setStep('matcher', 'active'); }
+  if (msg.includes('Top match score')) { setStep('matcher', 'done'); setStep('drafter', 'active'); }
+  if (msg.includes('Generated') && msg.includes('proposals')) setStep('drafter', 'done');
+}
+
+// ── Score Ring ─────────────────────────────────────────────────────────────
+function createScoreRing(score) {
+  const r = 20, circ = 2 * Math.PI * r;
+  const offset = circ - (score / 100) * circ;
+  const color = score >= 75 ? '#10B981' : score >= 50 ? '#6366F1' : score >= 25 ? '#F59E0B' : '#F43F5E';
+
+  return `
+    <div class="score-ring">
+      <svg width="52" height="52" viewBox="0 0 52 52">
+        <circle class="track" cx="26" cy="26" r="${r}"/>
+        <circle class="fill" cx="26" cy="26" r="${r}"
+          stroke="${color}"
+          stroke-dasharray="${circ}"
+          stroke-dashoffset="${offset}"/>
+      </svg>
+      <div class="score-text">
+        <div class="score-num" style="color:${color}">${score}</div>
+        <div class="score-label">SCORE</div>
+      </div>
+    </div>`;
+}
+
+// ── Match Badge ────────────────────────────────────────────────────────────
+function matchBadge(level) {
+  const map = {
+    'Excellent Match': ['excellent', '🏆'],
+    'Good Match': ['good', '✅'],
+    'Partial Match': ['partial', '⚡'],
+    'Low Match': ['low', '⚠️']
+  };
+  const [cls, icon] = map[level] || ['low', '—'];
+  return `<span class="match-badge ${cls}">${icon} ${level}</span>`;
+}
+
+// ── Render Grants ──────────────────────────────────────────────────────────
+function renderGrants(grants) {
+  return grants.map((g, i) => `
+    <div class="grant-card" style="animation-delay:${i * 0.08}s">
+      <div class="card-top">
+        <div class="grant-name">${g.name || 'Unknown Grant'}</div>
+        ${createScoreRing(g.score || 0)}
+      </div>
+      ${matchBadge(g.match_level || 'Low Match')}
+      <p class="grant-desc">${(g.description || '').substring(0, 120)}...</p>
+      <div class="grant-meta">
+        <div class="meta-row">
+          <span class="meta-icon">💰</span>
+          <span class="meta-key">Amount</span>
+          <span class="meta-val">${g.amount || 'Check website'}</span>
+        </div>
+        <div class="meta-row">
+          <span class="meta-icon">📅</span>
+          <span class="meta-key">Deadline</span>
+          <span class="meta-val">${g.deadline || 'Ongoing'}</span>
+        </div>
+        <div class="meta-row">
+          <span class="meta-icon">🏛️</span>
+          <span class="meta-key">Provider</span>
+          <span class="meta-val">${g.provider || 'Unknown'}</span>
+        </div>
+      </div>
+      <div class="grant-tags">
+        ${(g.sectors || []).slice(0,3).map(s => `<span class="tag">${s}</span>`).join('')}
+        ${(g.stages || []).slice(0,2).map(s => `<span class="tag">${s}</span>`).join('')}
+      </div>
+      <div class="card-actions">
+        <button class="btn-sm btn-primary" onclick="window.open('${g.url}','_blank')">View Grant →</button>
+        <button class="btn-sm btn-ghost" onclick="showEligibility(${i})">Eligibility</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+// ── Render Proposals ───────────────────────────────────────────────────────
+function renderProposals(proposals) {
+  return proposals.map((p, i) => `
+    <div class="proposal-card" style="animation-delay:${i * 0.1}s">
+      <div class="proposal-header">
+        <div class="proposal-header-left">
+          <div class="proposal-title">📄 ${p.grant_name || 'Grant Proposal'}</div>
+          <div class="proposal-subtitle">Match score: ${p.match_score || 0}/100 · Auto-generated by Drafter Agent</div>
+        </div>
+        <button class="btn-sm btn-primary" style="width:auto;padding:8px 16px" onclick="openModal('${escapeStr(p.grant_name)}', ${i})">Expand</button>
+      </div>
+      <div class="proposal-body">${(p.proposal || '').substring(0, 400)}...</div>
+      <div class="proposal-footer">
+        <button class="btn-sm btn-ghost" style="width:auto;padding:6px 14px" onclick="copyText('${escapeStr(p.proposal)}')">Copy Proposal</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+let currentGrants = [], currentProposals = [];
+
+function escapeStr(s) {
+  return (s || '').replace(/'/g, "\\'").replace(/\n/g, '\\n');
+}
+
+function showEligibility(idx) {
+  const g = currentGrants[idx];
+  const criteria = (g.eligibility || ['No criteria available']).join('\n• ');
+  openModalDirect(g.name + ' — Eligibility', '• ' + criteria);
+}
+
+function openModal(title, idx) {
+  const p = currentProposals[idx];
+  document.getElementById('modal-title').textContent = title;
+  document.getElementById('modal-body').textContent = p?.proposal || '';
+  document.getElementById('modal').classList.add('open');
+}
+
+function openModalDirect(title, text) {
+  document.getElementById('modal-title').textContent = title;
+  document.getElementById('modal-body').textContent = text;
+  document.getElementById('modal').classList.add('open');
+}
+
+function closeModal() {
+  document.getElementById('modal').classList.remove('open');
+}
+
+function copyProposal() {
+  copyText(document.getElementById('modal-body').textContent);
+}
+
+function copyText(text) {
+  navigator.clipboard.writeText(text).then(() => showToast('Copied to clipboard!', 'success'));
+}
+
+function showToast(msg, type = 'success') {
+  const t = document.getElementById('toast');
+  document.getElementById('toast-msg').textContent = msg;
+  document.getElementById('toast-icon').textContent = type === 'success' ? '✓' : '✗';
+  t.className = `toast ${type} show`;
+  setTimeout(() => t.className = `toast ${type}`, 2500);
+}
+
+// ── Main Function ──────────────────────────────────────────────────────────
+async function findGrants() {
+  const name        = document.getElementById('name').value.trim();
+  const domain      = document.getElementById('domain').value;
+  const stage       = document.getElementById('stage').value;
+  const location    = document.getElementById('location').value.trim();
+  const description = document.getElementById('description').value.trim();
+  const team_size   = parseInt(document.getElementById('team_size').value) || 1;
+
+  if (!name || !location || !description) {
+    showToast('Please fill in all fields', 'error');
+    return;
+  }
+
+  // UI → loading
+  const btn = document.getElementById('launch-btn');
+  const spinner = document.getElementById('spinner');
+  const btnText = document.getElementById('btn-text');
+  btn.disabled = true;
+  spinner.style.display = 'block';
+  btnText.textContent = 'Agents Running...';
+  isActive = true;
+  resetPipeline();
+
+  // Build right panel with log
+  document.getElementById('right-panel').innerHTML = `
+    <div class="log-container">
+      <div class="log-header">
+        <div class="live-dot"></div>
+        <span>Agent Activity Log</span>
+      </div>
+      <div class="log-body" id="log-body"></div>
+    </div>
+    <div id="results-area"></div>
+  `;
+
+  addLog('[ORCHESTRATOR] Initializing multi-agent pipeline...');
+  addLog(`[ORCHESTRATOR] Target: ${name} | ${domain} | ${stage} | ${location}`);
+
+  try {
+    const res = await fetch('/find-grants', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, domain, stage, location, description, team_size })
+    });
+
+    const data = await res.json();
+
+    if (data.detail) throw new Error(data.detail);
+
+    // Replay agent logs
+    (data.agent_logs || []).forEach(log => addLog(log));
+
+    currentGrants = data.grants || [];
+    currentProposals = data.proposals || [];
+
+    // Stats bar
+    const topScore = currentGrants.length > 0
+      ? Math.max(...currentGrants.map(g => g.score || 0))
+      : 0;
+
+    const excellent = currentGrants.filter(g => g.score >= 75).length;
+
+    document.getElementById('results-area').innerHTML = `
+      <div>
+        <div class="section-label">Mission Summary</div>
+        <div class="stats-bar">
+          <div class="stat-card" style="animation-delay:0s">
+            <div class="stat-num">${currentGrants.length}</div>
+            <div class="stat-label">Grants Found</div>
+          </div>
+          <div class="stat-card" style="animation-delay:0.1s">
+            <div class="stat-num">${topScore}</div>
+            <div class="stat-label">Top Score</div>
+          </div>
+          <div class="stat-card" style="animation-delay:0.2s">
+            <div class="stat-num">${excellent}</div>
+            <div class="stat-label">Excellent Matches</div>
+          </div>
+          <div class="stat-card" style="animation-delay:0.3s">
+            <div class="stat-num">${currentProposals.length}</div>
+            <div class="stat-label">Proposals Ready</div>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div class="section-label">Ranked Grant Opportunities</div>
+        <div class="grants-grid">${renderGrants(currentGrants)}</div>
+      </div>
+
+      ${currentProposals.length > 0 ? `
+      <div>
+        <div class="section-label">AI-Generated Proposals</div>
+        <div style="display:flex;flex-direction:column;gap:16px">
+          ${renderProposals(currentProposals)}
+        </div>
+      </div>` : ''}
+    `;
+
+    showToast(`Found ${currentGrants.length} grants • ${currentProposals.length} proposals ready`, 'success');
+
+  } catch (err) {
+    addLog(`[ERROR] ${err.message}`);
+    steps.forEach(s => setStep(s, 'error'));
+    showToast('Agent pipeline failed. Check console.', 'error');
+  } finally {
+    btn.disabled = false;
+    spinner.style.display = 'none';
+    btnText.textContent = '🚀 Launch Intelligence Search';
+    isActive = false;
+  }
+}
+
+// Close modal on overlay click
+document.getElementById('modal').addEventListener('click', function(e) {
+  if (e.target === this) closeModal();
+});
+
+// Ctrl+Enter to submit
+document.addEventListener('keydown', e => {
+  if (e.ctrlKey && e.key === 'Enter') findGrants();
+});
+</script>
+</body>
+</html>
