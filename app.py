@@ -17,10 +17,10 @@ app = FastAPI(
 # ── Request/Response Models ──────────────────────────────────────────────────
 class StartupProfile(BaseModel):
     name: str
-    domain: str          # e.g. "AgriTech", "HealthTech", "EdTech"
-    stage: str           # e.g. "Idea", "MVP", "Early Revenue"
-    location: str        # e.g. "Pune, Maharashtra"
-    description: str     # what the startup does
+    domain: str
+    stage: str
+    location: str
+    description: str
     team_size: int
 
 class GrantResponse(BaseModel):
@@ -29,7 +29,12 @@ class GrantResponse(BaseModel):
     agent_logs: list
 
 # ── Orchestrator instance ────────────────────────────────────────────────────
-orchestrator = Orchestrator()
+try:
+    orchestrator = Orchestrator()
+    print("[APP] Orchestrator initialized successfully")
+except Exception as e:
+    print(f"[APP] Orchestrator init failed: {e}")
+    orchestrator = None
 
 # ── Routes ───────────────────────────────────────────────────────────────────
 @app.get("/", response_class=HTMLResponse)
@@ -39,6 +44,8 @@ async def home():
 
 @app.post("/find-grants", response_model=GrantResponse)
 async def find_grants(profile: StartupProfile):
+    if orchestrator is None:
+        raise HTTPException(status_code=500, detail="Orchestrator failed to initialize")
     try:
         result = await orchestrator.run(profile.dict())
         return result
