@@ -1,6 +1,5 @@
 import os
 import json
-import re
 import asyncio
 from ibm_watsonx_ai import Credentials
 from ibm_watsonx_ai.foundation_models import ModelInference
@@ -8,6 +7,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+# Shared Granite model instance
 _credentials = Credentials(
     url=os.environ.get("IBM_URL", "https://us-south.ml.cloud.ibm.com"),
     api_key=os.environ.get("IBM_API_KEY")
@@ -17,76 +17,76 @@ granite = ModelInference(
     model_id="ibm/granite-4-h-small",
     credentials=_credentials,
     project_id=os.environ.get("IBM_PROJECT_ID"),
-    params={"max_new_tokens": 800, "temperature": 0.1}
+    params={"max_new_tokens": 600, "temperature": 0.1}
+    # temperature=0.1 → near-deterministic output
+    # critical for structured extraction — we want JSON, not creativity
 )
 
-def _extract_json(text: str) -> dict:
+# Limit concurrent calls to watsonx — prevents throttling/empty responses.
+# Tune this number: 2-3 is safe, raise it later if watsonx handles it fine.
+_llm_semaphore = asyncio.Semaphore(3)
+
+
+async def call_granite(prompt: str, retries: int = 1) -> str:
     """
-    Robustly extract JSON from LLM output.
-    Handles markdown fences, extra text, partial responses.
+    Wrapper around granite.generate_text that:
+    - Limits concurrency via a semaphore (prevents API throttling)
+    - Runs the blocking call in a thread (so it doesn't block the event loop)
+    - Retries once automatically if the response comes back empty
     """
-    # Strip markdown code fences
-    text = re.sub(r'```json\s*', '', text)
-    text = re.sub(r'```\s*', '', text)
-    text = text.strip()
+    async with _llm_semaphore:
+        for attempt in range(retries + 1):
+            try:
+                response = await asyncio.to_thread(granite.generate_text, prompt=prompt)
+                if response and response.strip():
+                    return response
+                print(f"[GRANITE] Empty response (attempt {attempt + 1}/{retries + 1})")
+            except Exception as e:
+                print(f"[GRANITE] Call failed (attempt {attempt + 1}/{retries + 1}): {e}")
 
-    # Try direct parse first
-    try:
-        return json.loads(text)
-    except json.JSONDecodeError:
-        pass
+            if attempt < retries:
+                await asyncio.sleep(1)  # brief pause before retry
 
-    # Try to find JSON object within the text
-    match = re.search(r'\{.*\}', text, re.DOTALL)
-    if match:
-        try:
-            return json.loads(match.group())
-        except json.JSONDecodeError:
-            pass
+    return ""
 
-    return None
 
 async def parse_grant_with_llm(content: str, title: str, url: str) -> dict:
-    prompt = f"""You are a JSON extraction tool. Extract grant information and return ONLY a JSON object.
-No explanation. No markdown. No text before or after. Just the JSON object.
+    """
+    Uses Granite to extract structured grant information.
+    temperature=0.1 ensures consistent JSON output.
+    """
 
-Title: {title}
-Content: {content[:1500]}
+    prompt = f"""Extract grant information from the following content and return ONLY a valid JSON object.
+Do not include any explanation, markdown, or text outside the JSON.
 
-Return exactly this JSON structure with real values extracted from content:
-{{"name": "{title}", "provider": "organization name", "amount": "funding amount", "deadline": "deadline date or ongoing", "eligibility": ["criterion 1", "criterion 2"], "sectors": ["sector"], "stages": ["Idea", "MVP", "Early Revenue"], "url": "{url}", "description": "brief description"}}"""
+Grant Title: {title}
+Source URL: {url}
+Content: {content[:2000]}
+
+Return this exact JSON structure:
+{{
+  "name": "grant name",
+  "provider": "organization providing the grant",
+  "amount": "funding amount or range",
+  "deadline": "application deadline",
+  "eligibility": ["criterion 1", "criterion 2", "criterion 3"],
+  "sectors": ["sector1", "sector2"],
+  "stages": ["Idea", "MVP", "Early Revenue"],
+  "url": "{url}",
+  "description": "2 sentence description"
+}}
+
+JSON:"""
+
+    response = await call_granite(prompt)
+
+    if not response:
+        print(f"[PARSER] No response for {title[:40]} — skipping")
+        return None
 
     try:
-        response = await asyncio.to_thread(granite.generate_text, prompt=prompt)
-        result = _extract_json(response)
-
-        # If still None, return a basic structured fallback
-        # so the pipeline doesn't drop this grant entirely
-        if result is None:
-            return {
-                "name": title,
-                "provider": "Unknown",
-                "amount": "Check website",
-                "deadline": "Check website",
-                "eligibility": ["Check official website for eligibility"],
-                "sectors": ["General"],
-                "stages": ["Idea", "MVP", "Early Revenue"],
-                "url": url,
-                "description": content[:200] if content else title
-            }
-
-        return result
-
-    except Exception as e:
-        print(f"[PARSER] Error: {e}")
-        return {
-            "name": title,
-            "provider": "Unknown",
-            "amount": "Check website",
-            "deadline": "Check website",
-            "eligibility": ["Check official website for eligibility"],
-            "sectors": ["General"],
-            "stages": ["Idea", "MVP", "Early Revenue"],
-            "url": url,
-            "description": title
-        }
+        clean = response.strip().replace("```json", "").replace("```", "").strip()
+        return json.loads(clean)
+    except json.JSONDecodeError:
+        print(f"[PARSER] Invalid JSON for {title[:40]}: {response[:100]}")
+        return None

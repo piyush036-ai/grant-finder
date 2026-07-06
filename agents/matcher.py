@@ -1,7 +1,7 @@
 import os
 import asyncio
 import re
-from tools.parser import granite
+from tools.parser import call_granite
 
 class MatcherAgent:
 
@@ -56,11 +56,12 @@ After each step state the points awarded and reason.
 End with: TOTAL_SCORE: [number]
 Then: SUMMARY: [one sentence explaining the match]"""
 
-        # Run the blocking granite.generate_text call in a thread so it
-        # doesn't block the event loop and can run concurrently with others
-        response = await asyncio.to_thread(granite.generate_text, prompt=prompt)
+        response = await call_granite(prompt)
 
         print(f"[MATCHER] Raw response for {grant.get('name','?')[:20]}: '{response[:80]}'")
+
+        if not response:
+            return 0, "No response from model"
 
         score = self._extract_score(response)
         return score, response

@@ -45,7 +45,6 @@ class ExtractorAgent:
             content = grant.get("snippet", "")
             print(f"[EXTRACTOR] Using snippet fallback")
 
-        # Embedding/ChromaDB storage — best effort, never blocks extraction
         if self.use_embedder and self.use_chroma and content:
             try:
                 chunks = self._chunk_text(content)
@@ -76,7 +75,6 @@ class ExtractorAgent:
         return extracted
 
     async def extract(self, raw_grants: list) -> list:
-        # Run all grants concurrently instead of one-by-one
         tasks = [self._process_one(grant) for grant in raw_grants]
         results = await asyncio.gather(*tasks, return_exceptions=True)
 
