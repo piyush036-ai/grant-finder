@@ -41,4 +41,6 @@ class ScoutAgent:
                 seen.add(r["url"])
                 unique.append(r)
 
-        return unique[:10]
+        return unique[:5]
+    
+

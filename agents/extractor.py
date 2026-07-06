@@ -1,11 +1,11 @@
 import os
+import asyncio
 import chromadb
 from tools.scraper import scrape_page
 from tools.parser import parse_grant_with_llm
 
 class ExtractorAgent:
     def __init__(self):
-        # Lazy load to avoid startup crash on Railway
         try:
             from sentence_transformers import SentenceTransformer
             self.embedder = SentenceTransformer("all-MiniLM-L6-v2")
@@ -36,41 +36,56 @@ class ExtractorAgent:
                 chunks.append(chunk)
         return chunks
 
-    async def extract(self, raw_grants: list) -> list:
-        structured = []
+    async def _process_one(self, grant: dict) -> dict:
+        print(f"[EXTRACTOR] Processing: {grant['title'][:50]}")
+        content = await scrape_page(grant["url"])
+        print(f"[EXTRACTOR] Scraped {len(content)} chars from {grant['url']}")
 
-        for grant in raw_grants:
-            print(f"[EXTRACTOR] Processing: {grant['title'][:50]}")
-            content = await scrape_page(grant["url"])
-            print(f"[EXTRACTOR] Scraped {len(content)} chars")
+        if not content:
+            content = grant.get("snippet", "")
+            print(f"[EXTRACTOR] Using snippet fallback")
 
-            if not content:
-                content = grant.get("snippet", "")
-
-            # Only use ChromaDB if available
-            if self.use_embedder and self.use_chroma and content:
+        # Embedding/ChromaDB storage — best effort, never blocks extraction
+        if self.use_embedder and self.use_chroma and content:
+            try:
                 chunks = self._chunk_text(content)
                 for i, chunk in enumerate(chunks[:5]):
-                    try:
-                        embedding = self.embedder.encode(chunk).tolist()
-                        self.collection.upsert(
-                            ids=[f"{grant['url']}_{i}"],
-                            embeddings=[embedding],
-                            documents=[chunk],
-                            metadatas=[{"url": grant["url"], "title": grant["title"]}]
-                        )
-                    except Exception as e:
-                        print(f"[EXTRACTOR] Embed error: {e}")
+                    embedding = self.embedder.encode(chunk).tolist()
+                    self.collection.upsert(
+                        ids=[f"{grant['url']}_{i}"],
+                        embeddings=[embedding],
+                        documents=[chunk],
+                        metadatas=[{"url": grant["url"], "title": grant["title"]}]
+                    )
+            except Exception as e:
+                print(f"[EXTRACTOR] Embed error: {e}")
 
-            context = content if content else grant.get("snippet", grant["title"])
+        context = content if content else grant.get("snippet", grant["title"])
+        try:
             extracted = await parse_grant_with_llm(
                 content=context,
                 title=grant["title"],
                 url=grant["url"]
             )
+        except Exception as e:
+            print(f"[EXTRACTOR] Parse failed for {grant['title'][:40]}: {e}")
+            return None
 
-            if extracted:
-                structured.append(extracted)
-                print(f"[EXTRACTOR] ✓ Extracted: {extracted.get('name', 'Unknown')}")
+        if extracted:
+            print(f"[EXTRACTOR] ✓ Extracted: {extracted.get('name', 'Unknown')}")
+        return extracted
+
+    async def extract(self, raw_grants: list) -> list:
+        # Run all grants concurrently instead of one-by-one
+        tasks = [self._process_one(grant) for grant in raw_grants]
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+
+        structured = []
+        for r in results:
+            if isinstance(r, Exception):
+                print(f"[EXTRACTOR] Task failed: {r}")
+                continue
+            if r:
+                structured.append(r)
 
         return structured

@@ -1,6 +1,7 @@
 import os
 import json
 import re
+import asyncio
 from ibm_watsonx_ai import Credentials
 from ibm_watsonx_ai.foundation_models import ModelInference
 from dotenv import load_dotenv
@@ -56,7 +57,7 @@ Return exactly this JSON structure with real values extracted from content:
 {{"name": "{title}", "provider": "organization name", "amount": "funding amount", "deadline": "deadline date or ongoing", "eligibility": ["criterion 1", "criterion 2"], "sectors": ["sector"], "stages": ["Idea", "MVP", "Early Revenue"], "url": "{url}", "description": "brief description"}}"""
 
     try:
-        response = granite.generate_text(prompt=prompt)
+        response = await asyncio.to_thread(granite.generate_text, prompt=prompt)
         result = _extract_json(response)
 
         # If still None, return a basic structured fallback
